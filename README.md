@@ -1,0 +1,1 @@
+# openchami-kustomize-local
