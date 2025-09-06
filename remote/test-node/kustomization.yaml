@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/test-node/namespace/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/test-node/kubevirt/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/test-node/kubevirtbmc/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/test-node/vm/?timeoute=120&ref=rainest-argo
+# TODO installing cert-manager using Argo makes Argo unhappy with webhook certs.
+# unknown issue prevents Argo from trusting cert-manager's. Pending a fix for that,
+# it must be installed separately:
+#
+# kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+
+labels:
+- includeSelectors: false
+  pairs:
+    app.kubernetes.io/part-of: virt-test
+
+secretGenerator:
+- name: vm-cloud-init
+  namespace: default
+  behavior: create
+  files:
+  - userdata
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: Secret
+      name: vm-cloud-init
+      version: v1
+    targets:
+      - select:
+          kind: VirtualMachine
+          group: kubevirt.io
+          version: v1
+          name: fred
+        fieldPaths:
+          - spec.template.spec.volumes.[name=cloudinitdisk].cloudInitNoCloud.secretRef.name

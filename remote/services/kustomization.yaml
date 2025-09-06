@@ -1,0 +1,157 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# I don't think there's any way to allow for a single kustomization that supports either
+# out of band Secrets or generated Secrets (AFAIK there's no apply-if-not-exists). It's
+# doable as an overlay over the main suite, but that complicates image replacements, so
+# providing an alternative with some duplication seems better.
+#resources:
+#- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/namespace/?timeoute=120&ref=rainest-argo
+#- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/suite/?timeoute=120&ref=rainest-argo
+
+resources:
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/namespace/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/db/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/smd/suite/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/bss/suite/?timeoute=120&ref=rainest-argo
+- https://github.com/OpenCHAMI/deployment-recipes//lbnl/argo/services/pcs/suite/?timeoute=120&ref=rainest-argo
+
+# TODO even with a generator there doesn't appear to be a great way of injecting
+# values at runtime. https://argo-cd.readthedocs.io/en/stable/operator-manual/secret-management/
+# recommends simply managing Secrets out of band, and the Vault injection example in
+# https://argocd-vault-plugin.readthedocs.io/en/stable/usage/#with-kustomize looks a bit clunky.
+# secretGenerator can't actually pull from the environment ("envs" is a specially-formatted file)
+# and per https://github.com/argoproj/argo-cd/issues/5673 Argo can't provide it.
+# https://argo-cd.readthedocs.io/en/stable/user-guide/kustomize/#build-environment is limited to
+# select bits of information.
+#
+# Since Argo can't make use of a locally-managed file, the secrets have to go into git AFAIK.
+# https://github.com/bitnami-labs/sealed-secrets (maybe less an option, IDK if this is subject
+# to the same monetization shenanigans as the Bitnami containers) or
+# https://github.com/viaduct-ai/kustomize-sops or https://github.com/goabout/kustomize-sopssecretgenerator
+# can handle this securely, but aren't readily available for minimal effort install.
+secretGenerator:
+- name: pcs-db-generated
+  namespace: mgmt
+  literals:
+  - username=pcs
+  - password=CHANGEME
+- name: smd-db-generated
+  namespace: mgmt
+  literals:
+  - username=smd
+  - password=CHANGEME
+- name: bss-db-generated
+  namespace: mgmt
+  literals:
+  - username=bss
+  - password=CHANGEME
+
+# TODO ostensibly replacements that reference the name of a generated Secret
+# should include the suffix on build, but apparently they don't, or they do so
+# inconsistently:
+# https://github.com/kubernetes-sigs/kustomize/issues/5899
+# This disables the hash suffix, with the caveat that Secret-only updates will
+# not re-roll Deployments. We don't really expect the DB password Secrets to change
+# after creation--they're baked into the DB--so that's probably fine.
+generatorOptions:
+  disableNameSuffixHash: true
+
+replacements:
+  - source:
+      kind: Secret
+      name: pcs-db-generated
+      version: v1
+    targets:
+      - select:
+          kind: Deployment
+          group: apps
+          version: v1
+          name: pcs
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=POSTGRES_USER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=POSTGRES_PASSWORD].valueFrom.secretKeyRef.name
+      - select:
+          kind: Job
+          group: batch
+          version: v1
+          name: migrate-pcs
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=POSTGRES_USER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=POSTGRES_PASSWORD].valueFrom.secretKeyRef.name
+      - select:
+          kind: Cluster
+          group: postgresql.cnpg.io
+          version: v1
+          name: ochami-postgres
+        fieldPaths:
+          - spec.managed.roles.[name=pcs].passwordSecret.name
+  - source:
+      kind: Secret
+      name: bss-db-generated
+      version: v1
+    targets:
+      - select:
+          kind: Deployment
+          group: apps
+          version: v1
+          name: bss
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=BSS_DBUSER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=BSS_DBPASS].valueFrom.secretKeyRef.name
+      - select:
+          kind: Job
+          group: batch
+          version: v1
+          name: migrate-bss
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=BSS_DBUSER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=BSS_DBPASS].valueFrom.secretKeyRef.name
+      - select:
+          kind: Cluster
+          group: postgresql.cnpg.io
+          version: v1
+          name: ochami-postgres
+        fieldPaths:
+          - spec.managed.roles.[name=bss].passwordSecret.name
+  - source:
+      kind: Secret
+      name: smd-db-generated
+      version: v1
+    targets:
+      - select:
+          kind: Deployment
+          group: apps
+          version: v1
+          name: smd
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=SMD_DBUSER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=SMD_DBPASS].valueFrom.secretKeyRef.name
+      - select:
+          kind: Job
+          group: batch
+          version: v1
+          name: migrate-smd
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=SMD_DBUSER].valueFrom.secretKeyRef.name
+          - spec.template.spec.containers.0.env.[name=SMD_DBPASS].valueFrom.secretKeyRef.name
+      - select:
+          kind: Cluster
+          group: postgresql.cnpg.io
+          version: v1
+          name: ochami-postgres
+        fieldPaths:
+          - spec.managed.roles.[name=smd].passwordSecret.name
+
+# TODO this probably should be handled at the ochami/suite level, since that's where other end
+# user modification happens. However, that precludes doing an earlier replacement in ochami/pcs/suite:
+# image overrides build from the bottom up, and if your included resource includes a replace, your
+# including kustomization needs to match the result of the replace, not the original stub. Top-level
+# image sections do not clobber lower-level ones.
+#
+# This means you can't deploy ochami/pcs independently without modifying its kustomization. It'd be
+# nice if you could render either with a valid image using the stock manifests.
+images:
+- name: power-control-stub
+  newName: docker.io/traines/power-control
+  newTag: v1.1.0-debug.1

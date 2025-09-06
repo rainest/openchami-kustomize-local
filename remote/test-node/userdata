@@ -1,0 +1,25 @@
+#cloud-config
+hostname: fred
+ssh_pwauth: True
+disable_root: false
+# kubevirt cloud-init handling requires a raw userdata doc. There's no structured "configure a user",
+# "set SSH key", etc. in the VirtualMachine spec. Site localization requires subbing in the desired key
+# and password here, which is clunky, but manageable.
+ssh_authorized_keys:
+- ssh-ed25519 CHANGEME username@host
+users:
+- name: fred
+  # kubevirt passwd cloud-init appears quite finicky, but hashed_password works. Note that kubevirt
+  # _does not_ re-run these after first boot, contrary to cloud-init documentation. If you want to
+  # change it, you must destroy and redeploy the VM. Running:
+  #
+  # echo "CHANGEME" | mkpasswd --method=SHA-512 --rounds=4096 --stdin
+  #
+  # will provide a passwd string you can use with hashed_passwd for password login:
+  #
+  # hashed_passwd: "$6$rounds=4096$bEi3oQdeI7.odStr$tW/Tvw.kwYCVIiNse11C9yyBOzb/kAen2WUa1kUZXYSisL8DHrH.cRJqjcES9J1T8JL3duiV6Z6DcMkQtltj7."
+  # Password is disabled by default, which has the knockon effect of not allowing sudo either
+  lock_passwd: false
+  sudo: "ALL=(ALL) ALL"
+  ssh_authorized_keys:
+  - ssh-ed25519 CHANGEME username@host
