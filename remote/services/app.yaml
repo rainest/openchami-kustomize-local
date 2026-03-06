@@ -10,9 +10,9 @@ spec:
     - ServerSideApply=true
     - SkipDryRunOnMissingResource=true
   source:
-    path: 'remote/services'
-    repoURL: 'https://github.com/rainest/kustomize-playground'
-    targetRevision: public-rework
+    path: 'kustomize/services'
+    repoURL: 'https://github.com/OpenCHAMI/kube-deploy'
+    targetRevision: main
   destination:
-    namespace: mgmt
+    namespace: openchami
     server: 'https://kubernetes.default.svc'
