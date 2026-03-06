@@ -9,8 +9,8 @@ spec:
     - ServerSideApply=true
     - SkipDryRunOnMissingResource=true
   source:
-    path: 'kustomize/test-node'
-    repoURL: 'https://github.com/OpenCHAMI/kube-deploy'
+    path: 'remote/test-node'
+    repoURL: 'https://github.com/rainest/openchami-kustomize-local'
     targetRevision: main
   destination:
     namespace: default

@@ -6,20 +6,20 @@ disable_root: false
 # "set SSH key", etc. in the VirtualMachine spec. Site localization requires subbing in the desired key
 # and password here, which is clunky, but manageable.
 ssh_authorized_keys:
-- ssh-ed25519 CHANGEME username@host
+- ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINmsVx1krE7zm/40VBd8ad5gG8SQ2yJNmf7Wu8eBGvpS traines@ayni
 users:
 - name: fred
   # kubevirt passwd cloud-init appears quite finicky, but hashed_password works. Note that kubevirt
   # _does not_ re-run these after first boot, contrary to cloud-init documentation. If you want to
   # change it, you must destroy and redeploy the VM. Running:
   #
-  # echo "CHANGEME" | mkpasswd --method=SHA-512 --rounds=4096 --stdin
+  # echo "arg0arg0" | mkpasswd --method=SHA-512 --rounds=4096 --stdin
   #
   # will provide a passwd string you can use with hashed_passwd for password login:
   #
-  # hashed_passwd: "$6$rounds=4096$bEi3oQdeI7.odStr$tW/Tvw.kwYCVIiNse11C9yyBOzb/kAen2WUa1kUZXYSisL8DHrH.cRJqjcES9J1T8JL3duiV6Z6DcMkQtltj7."
+  hashed_passwd: "$6$rounds=4096$JnSkzF7F0It1gEPA$5ET0JgAJ7/cs0cxZTTIr.yJ4wcdfJS4.gb6z7PUToRyV/X3xYzptg/3uLBnnpClbNbkg.tgWDBEYQGOmiyUqf/"
   # Password is disabled by default, which has the knockon effect of not allowing sudo either
   lock_passwd: false
   sudo: "ALL=(ALL) ALL"
   ssh_authorized_keys:
-  - ssh-ed25519 CHANGEME username@host
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINmsVx1krE7zm/40VBd8ad5gG8SQ2yJNmf7Wu8eBGvpS traines@ayni

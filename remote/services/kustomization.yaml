@@ -13,17 +13,17 @@ secretGenerator:
   namespace: openchami
   literals:
   - username=pcs
-  - password=CHANGEME
+  - password=abcd1234
 - name: smd-db-generated
   namespace: openchami
   literals:
   - username=smd
-  - password=CHANGEME
+  - password=abcd1234
 - name: bss-db-generated
   namespace: openchami
   literals:
   - username=bss
-  - password=CHANGEME
+  - password=abcd1234
 
 # TODO ostensibly replacements that reference the name of a generated Secret
 # should include the suffix on build, but apparently they don't, or they do so
